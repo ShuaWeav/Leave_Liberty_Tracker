@@ -1,100 +1,67 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <!-- Page refreshes after 180s (3 minutes). Adjust as needed. -->
-  <meta http-equiv="refresh" content="180">
-  <title>QR Code Auto-Refresh Demo</title>
+const DOC_ID = "1ShP2zZIZUfer-NK6bPcRl2UIDy32VWDsxuGQ-G63VWo"; // Google Doc ID
+const FORM_BASE_URL = "https://docs.google.com/forms/d/e/1FAIpQLSe4UKsEzqou6HVoimdeEwzSZx2SG-7E8tG4zMgLyhSCsHpvMw/viewform"; // Google Form URL
+const SHEET_ID = "1GmoHt2NeSayd5nTXL4pIoNWo3S4Vbp4SGlRKy5bwEno"; // Leave/Liberty Tracker Sheet ID
 
-  <!-- QRCode.js library -->
-  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+let currentSessionID = null; // Store the current session ID
 
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-      /* Ensure the page content doesn't hide behind the footer */
-      padding-bottom: 30px; /* Height equal or larger than the footer */
-    }
-    #pageContent {
-      text-align: center;
-      margin-top: 50px;
-    }
-    #qrcode {
-      margin: 20px auto;
-      width: 256px;
-      height: 256px;
-    }
-    /* Fixed footer at the bottom of the page */
-    #currentLink {
-      position: fixed;   /* Keep this element in a fixed position */
-      bottom: 0;         /* Align to the bottom of the viewport */
-      left: 0;
-      width: 100%;       /* Span the full width of the page */
-      text-align: center;
-      font-size: 0.7em;
-      color: #666;       /* Gray color for less distraction */
-      background-color: #fafafa; /* Slightly off-white background */
-      margin: 0;
-      padding: 5px 0;
-      box-shadow: 0 -1px 3px rgba(0,0,0,0.1);
-    }
-  </style>
-</head>
-<body>
+// Generate a new QR code and update the Google Doc
+function generateAndInsertQRCode() {
+  const doc = DocumentApp.openById(DOC_ID);
+  const body = doc.getBody();
 
-  <!-- Main content in the center -->
-  <div id="pageContent">
-    <h1>SCAN THE QR CODE TO CHECK OUT/IN FROM LEAVE</h1>
-    <p>
-     Ensure each entry is uploaded accurately, along with capital letters<br><strong>Ex: (First Name: John)<br>Ex: (Last Name: Doe)<br>Ex: (Buddy's Name: Jane Doe)</strong>
-    </p>
-    <div id="qrcode"></div>
-  </div>
+  // Generate a new session ID
+  currentSessionID = Utilities.getUuid();
 
-  <!-- Debug text in a small, subtle footer at the *very bottom* -->
-  <p id="currentLink"></p>
+  // Embed the session ID in the Google Form URL
+  const qrURL = `${FORM_BASE_URL}?usp=pp_url&sessionID=${encodeURIComponent(currentSessionID)}`;
 
-  <script>
-    // Replace with your actual Google Forms link
-    const BASE_FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSe4UKsEzqou6HVoimdeEwzSZx2SG-7E8tG4zMgLyhSCsHpvMw/viewform?usp=sharing";
+  // Generate the QR code URL
+  const qrCodeImageURL = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrURL)}`;
 
-    let qrCodeObj = null;
+  // Clear existing content and insert the new QR code
+  body.clear();
+  body.appendParagraph("Scan this QR code to check out:");
+  body.appendImage(UrlFetchApp.fetch(qrCodeImageURL).getBlob());
+  body.appendParagraph(`Session ID: ${currentSessionID}`);
 
-    // Generates a unique version of your form URL so the QR code looks different each time
-    function getRandomFormURL() {
-      const uniqueParam = Date.now();
-      return `${BASE_FORM_URL}?unique=${uniqueParam}`;
-    }
+  doc.saveAndClose();
+}
 
-    // Update the QR code in the browser
-    function updateQRCode() {
-      const newURL = getRandomFormURL();
+// Log a scan, refresh the QR code, and invalidate the old session
+function logScanAndRefresh(request) {
+  if (!request || !request.parameter) {
+    return ContentService.createTextOutput("Invalid request: Missing parameters.");
+  }
 
-      if (!qrCodeObj) {
-        // If it's the first time generating the QR code
-        qrCodeObj = new QRCode(document.getElementById("qrcode"), {
-          text: newURL,
-          width: 256,
-          height: 256
-        });
-      } else {
-        // If we have an existing QR code, just update it
-        qrCodeObj.makeCode(newURL);
-      }
+  const scannedSessionID = request.parameter.sessionID; // Session ID from form submission
+  const studentID = request.parameter.studentID; // Student ID from form submission
 
-      // Display the link in the fixed footer at the bottom
-      document.getElementById("currentLink").innerText = `Current QR Code URL: ${newURL}`;
-    }
+  // Validate that both parameters are provided
+  if (!scannedSessionID || !studentID) {
+    return ContentService.createTextOutput("Invalid request: Missing sessionID or studentID.");
+  }
 
-    // Generate the initial QR code
-    updateQRCode();
+  // Validate the session ID
+  if (scannedSessionID !== currentSessionID) {
+    return ContentService.createTextOutput("Invalid or Expired QR Code");
+  }
 
-    // Update the QR code 5 seconds before the full page refresh (i.e., 175s for a 180s refresh)
-    const TIME_BEFORE_REFRESH = (180 - 5) * 1000; // 175 seconds in milliseconds
-    setTimeout(updateQRCode, TIME_BEFORE_REFRESH);
-  </script>
-</body>
-</html>
+  // Log the valid scan
+  logToSheet(studentID, scannedSessionID);
 
+  // Invalidate the current session and generate a new QR code
+  generateAndInsertQRCode();
+
+  return ContentService.createTextOutput("Check-out Successful");
+}
+
+// Log the valid check-out in the Google Sheet
+function logToSheet(studentID, sessionID) {
+  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName("Sheet 1"); // Replace "Sheet 1" with your tab name
+  sheet.appendRow([new Date(), studentID, sessionID]);
+}
+
+// Deployable Web App Endpoint
+function doGet(request) {
+  return logScanAndRefresh(request);
+}
