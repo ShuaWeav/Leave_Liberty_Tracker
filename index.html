@@ -14,6 +14,8 @@
       font-family: Arial, sans-serif;
       margin: 0;
       padding: 0;
+      /* Ensure the page content doesn't hide behind the footer */
+      padding-bottom: 30px; /* Height equal or larger than the footer */
     }
     #pageContent {
       text-align: center;
@@ -24,70 +26,78 @@
       width: 256px;
       height: 256px;
     }
-    /* Small, subtle text at the bottom of the page */
+    /* Fixed footer at the bottom of the page */
     #currentLink {
-      font-size: 0.7em;
-      color: #666;        /* Gray color for less distraction */
+      position: fixed;   /* Keep this element in a fixed position */
+      bottom: 0;         /* Align to the bottom of the viewport */
+      left: 0;
+      width: 100%;       /* Span the full width of the page */
       text-align: center;
-      margin: 10px 0;    /* Some spacing above/below */
+      font-size: 0.7em;
+      color: #666;       /* Gray color for less distraction */
+      background-color: #fafafa; /* Slightly off-white background */
+      margin: 0;
+      padding: 5px 0;
+      box-shadow: 0 -1px 3px rgba(0,0,0,0.1);
     }
   </style>
 </head>
 <body>
 
-  <!-- Main content in the middle -->
+  <!-- Main content in the center -->
   <div id="pageContent">
-    <h1>QR Code That Updates Before Page Refresh</h1>
+    <h1>SCAN THE QR CODE TO CHECK OUT/IN FROM LEAVE</h1>
     <p>
-      This page refreshes every 3 minutes (180s). 
-      The QR code updates a few seconds before that.
+     Ensure each entry is uploaded accurately, along with capital letters
+      Ex: (First Name: John)
+      Ex: (Last Name: Doe)
+      Buddy's Name (Jane Doe).
     </p>
-    <!-- Container for the QR code -->
     <div id="qrcode"></div>
   </div>
 
-  <!-- Debug text at the bottom, small & gray -->
+  <!-- Debug text in a small, subtle footer at the *very bottom* -->
   <p id="currentLink"></p>
 
   <script>
     // Replace with your actual Google Forms link
-    const BASE_FORM_URL = "https://docs.google.com/forms/d/EXAMPLE_FORM_ID/viewform";
+    const BASE_FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSe4UKsEzqou6HVoimdeEwzSZx2SG-7E8tG4zMgLyhSCsHpvMw/viewform?usp=sharing";
 
     let qrCodeObj = null;
 
-    // Generates a unique version of your form URL so the QR code pattern changes
+    // Generates a unique version of your form URL so the QR code looks different each time
     function getRandomFormURL() {
       const uniqueParam = Date.now();
       return `${BASE_FORM_URL}?unique=${uniqueParam}`;
     }
 
-    // Updates the QR code in the browser
+    // Update the QR code in the browser
     function updateQRCode() {
       const newURL = getRandomFormURL();
 
       if (!qrCodeObj) {
-        // First-time creation
+        // If it's the first time generating the QR code
         qrCodeObj = new QRCode(document.getElementById("qrcode"), {
           text: newURL,
           width: 256,
           height: 256
         });
       } else {
-        // If already created, just update
+        // If we have an existing QR code, just update it
         qrCodeObj.makeCode(newURL);
       }
 
-      // Display the link at the bottom in a small, subtle font
+      // Display the link in the fixed footer at the bottom
       document.getElementById("currentLink").innerText = `Current QR Code URL: ${newURL}`;
     }
 
-    // 1) Generate the initial QR code when the page loads
+    // Generate the initial QR code
     updateQRCode();
 
-    // 2) Update the QR code a bit before full refresh (e.g., 5 seconds earlier)
-    //    If meta refresh is 180s, do 175s for 5s gap:
-    const TIME_BEFORE_REFRESH = (180 - 5) * 1000; // 175 * 1000 = 175000 ms
+    // Update the QR code 5 seconds before the full page refresh (i.e., 175s for a 180s refresh)
+    const TIME_BEFORE_REFRESH = (180 - 5) * 1000; // 175 seconds in milliseconds
     setTimeout(updateQRCode, TIME_BEFORE_REFRESH);
   </script>
 </body>
 </html>
+
