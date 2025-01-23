@@ -69,7 +69,7 @@
     // 1) Generate an initial QR code as soon as the page loads
     updateQRCode();
 
-    // 2) Schedule the QR code to update at 2 minutes 58 seconds (178s)
+    // 2) Schedule the QR code to update at 5 seconds before page refresh (178s)
     //    so that it changes just before the 3-minute mark
     const TIME_BEFORE_REFRESH = 5000; // milliseconds (5s)
     setTimeout(updateQRCode, TIME_BEFORE_REFRESH);
