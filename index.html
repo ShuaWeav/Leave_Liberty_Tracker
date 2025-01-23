@@ -2,22 +2,77 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <!-- 
-    This meta tag tells the browser to refresh the entire page 
-    every 180 seconds (i.e., 3 minutes).
-  -->
+  <!-- Refresh the ENTIRE page at 180 seconds (3 minutes) -->
   <meta http-equiv="refresh" content="180">
-  <title>Auto-Refreshing Page</title>
+  <title>QR Code Auto-Refresh Demo</title>
+
+  <!-- QRCode.js library (hosted via jsDelivr CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin-top: 50px;
+    }
+    #qrcode {
+      margin: 20px auto;
+      width: 256px;
+      height: 256px;
+    }
+  </style>
 </head>
 <body>
-  <h1>Hello, Josh!</h1>
-  <p>This page will refresh every 3 minutes.</p>
+  <h1>QR Code That Updates Before Page Refresh</h1>
+  <p>This page refreshes every 3 minutes (180s). The QR code updates 2 seconds before that.</p>
+  
+  <!-- Container for our QR code -->
+  <div id="qrcode"></div>
 
-  <!-- 
-    Optional: If you want to display an image (like a QR code), 
-    place it in the repo and reference it here by its path. 
-    Example:
-    <img src="qr_code.png" alt="QR Code" />
-  -->
+  <!-- Optional: Show the current “target” link for debugging -->
+  <p id="currentLink"></p>
+
+  <script>
+    // Your base link to Google Forms (adjust to your actual form)
+    const BASE_FORM_URL = "https://docs.google.com/forms/d/EXAMPLE_FORM_ID/viewform";
+
+    // We'll create the QR code object in this variable
+    let qrCodeObj = null;
+
+    // Function to generate a random link parameter for the form
+    function getRandomFormURL() {
+      // e.g. add a timestamp or random number so the QR code pattern changes
+      const uniqueParam = Date.now(); // or Math.floor(Math.random()*1e9)
+      return `${BASE_FORM_URL}?unique=${uniqueParam}`;
+    }
+
+    // Function to update the QR code in the browser
+    function updateQRCode() {
+      const newURL = getRandomFormURL();
+
+      // If we have not created the QR code yet, make a new one
+      if (!qrCodeObj) {
+        qrCodeObj = new QRCode(document.getElementById("qrcode"), {
+          text: newURL,
+          width: 256,
+          height: 256
+        });
+      } else {
+        // If the QR code object is already initialized, just update
+        qrCodeObj.makeCode(newURL);
+      }
+
+      // Display the link text on the page (for debugging)
+      document.getElementById("currentLink").innerText = `Current QR Code URL: ${newURL}`;
+    }
+
+    // 1) Generate an initial QR code as soon as the page loads
+    updateQRCode();
+
+    // 2) Schedule the QR code to update at 2 minutes 58 seconds (178s)
+    //    so that it changes just before the 3-minute mark
+    const TIME_BEFORE_REFRESH = 178000; // milliseconds (178s)
+    setTimeout(updateQRCode, TIME_BEFORE_REFRESH);
+  </script>
 </body>
 </html>
